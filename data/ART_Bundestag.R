@@ -73,7 +73,7 @@ art_df <- tibble(
   date = date,
   url = pdf_url,
   id_paste = str_replace_all(id, "/", "")) %>%
-  mutate(dest = paste0("./data/BundestagProtocol/", id_paste, ".pdf"))
+  mutate(dest = paste0("./protocols/", id_paste, ".pdf"))
 
 # Download the protocols
 map2(.x = art_df$url, .y = art_df$dest, .f = ~download.file(url = .x, destfile = .y, mode = "wb"))
