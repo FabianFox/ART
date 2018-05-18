@@ -1,5 +1,5 @@
 if (!require(pacman)) install.packages(pacman)
-p_load(tidytext, scales)
+p_load(tidytext, tidyverse, forcats, scales)
 
 # Create a tidytext 
 deb19011.tidy <- deb19011.df %>%
@@ -27,8 +27,21 @@ deb19011.freq <- deb19011.tidy %>%
 # see: https://www.tidytextmining.com/tfidf.html
 # Look up whether stopwords should be removed
 deb19011.tfidf <- deb19011.freq %>%
-  bind_tf_idf(word, speaker, total)
+  bind_tf_idf(word, speaker, n) %>%
+  select(-total, -proportion) %>%
+  arrange(desc(tf_idf))
 
+# Plot the tf_idf by speaker
+deb19011.tfidf %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(speaker) %>% 
+  slice(1:15) %>%
+  ungroup %>%
+  ggplot(aes(x = fct_reorder(word, tf_idf), y = tf_idf, fill = speaker)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = NULL, y = "tf-idf") +
+  facet_wrap(~speaker, scales = "free") +
+  coord_flip()
 
 
 
