@@ -1,3 +1,15 @@
+############################
+# Project: ART             #
+# 'Reproduktionsmedizin'   #
+# Tidytext tinkering with  #
+# a parliamentary debate   #
+# 20.05.2018               #
+############################
+
+# Issues:
+# - None
+
+# Load/install packages
 if (!require(pacman)) install.packages(pacman)
 p_load(tidytext, tidyverse, forcats, scales)
 
