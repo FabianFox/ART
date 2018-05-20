@@ -55,5 +55,20 @@ deb19011.tfidf %>%
   facet_wrap(~speaker, scales = "free") +
   coord_flip()
 
+# Bigram analysis
+deb19011.bi <- deb19011.df %>%
+  unnest_tokens(bigram, speech, token = "ngrams", n = 2)
 
+# Remove stopwords
+deb19011.bi <- deb19011.bi %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% # separate bigrams
+  filter(!word1 %in% stopwords$word) %>% # remove stopwords
+  filter(!word2 %in% stopwords$word)
 
+# Count common bigrams
+deb19011.bi %>% 
+  count(word1, word2, sort = TRUE)
+
+# Turn separated bigrams back together
+deb19011.bi <- deb19011.bi %>%
+  unite(bigram, word1, word2, sep = " ")
