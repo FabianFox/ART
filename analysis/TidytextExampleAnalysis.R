@@ -11,7 +11,7 @@
 
 # Load/install packages
 if (!require(pacman)) install.packages(pacman)
-p_load(tidytext, tidyverse, forcats, scales)
+p_load(tidytext, tidyverse, forcats, scales, widyr)
 
 # Create a tidytext 
 deb19011.tidy <- deb19011.df %>%
@@ -72,3 +72,4 @@ deb19011.bi %>%
 # Turn separated bigrams back together
 deb19011.bi <- deb19011.bi %>%
   unite(bigram, word1, word2, sep = " ")
+
