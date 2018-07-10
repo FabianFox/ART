@@ -54,3 +54,5 @@ for(i in seq_along(scrape.over$links)){
   
   Sys.sleep(sample(seq(0, 3.5, 0.5), 1))
 }
+
+saveRDS(object = articles, file = "C:\\Users\\guelzauf\\Seafile\\Meine Bibliothek\\Projekte\\SpiegelArticles_100718.RDS")
