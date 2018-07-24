@@ -21,7 +21,23 @@ url <- "http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmediz
 # Consecutive pages (2-8)
 paste0("http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmedizin*%22&suchzeitraum=all&quellenGroup=SP&pageNumber=", "2")
 
-# (1) Get the links to all articles on all pages
+# (1) Get all article teasers
+type <- vector("list", length = 9)
+
+for(i in seq_along(links)){
+  url <- paste0("http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmedizin*%22&suchzeitraum=all&quellenGroup=SP&pageNumber=", i)
+  type[[i]] <- html_text(html_nodes(read_html(url), css = ".search-teaser div"))
+  
+  Sys.sleep(sample(seq(0, 2, 0.5), 1))
+}
+
+# (2) Identify all interviews and newspaper commentaries
+types.df <- tibble(teaser = unlist(type)) %>%
+  mutate(type = case_when(str_detect(teaser, "Interview") == TRUE ~ "Interview",
+                          str_detect(teaser, "Kommentar") == TRUE ~ "Kommentar")
+         )
+
+# (3) Get the links to all articles on all pages
 links <- vector("list", length = 9)
 
 for(i in seq_along(links)){
@@ -31,24 +47,30 @@ for(i in seq_along(links)){
   Sys.sleep(sample(seq(0, 2, 0.5), 1))
 }
 
-scrape.over <- tibble(links = unlist(links), stringsAsFactors = FALSE)
+# As tibble
+scrape.over <- tibble(links = unlist(links))
+
+# (4) Merge types.df and links
+scrape.df <- cbind(types.df, scrape.over)
 
 # Only articles published in print issues
-scrape.over <- scrape.over %>%
+scrape.df <- scrape.df %>%
   mutate(print = str_detect(links, "print")) %>%
-  filter(print == TRUE) %>%
-  select(-print)
+  filter(print == TRUE & !is.na(type)) %>%
+  select(-print) %>%
+  mutate(links = paste0("http://www.spiegel.de", links),
+         date = str_extract(teaser, "[:digit:]{2}.[:digit:]{2}.[:digit:]{4}"))
 
 scrape.over <- scrape.over %>%
   mutate(links = paste0("http://www.spiegel.de", links))
 
 # (2) Now we can access the articles via scrape.over$links
-articles <- vector("character", length = nrow(scrape.over))
+articles <- vector("character", length = nrow(scrape.df))
 
-for(i in seq_along(scrape.over$links)){
-  print(paste0("Scraping articles ", i, " of ", length(scrape.over$links)))
+for(i in seq_along(scrape.df$links)){
+  print(paste0("Scraping articles ", i, " of ", length(scrape.df$links)))
   
-  articles[[i]] <- read_html(scrape.over$links[[i]]) %>%
+  articles[[i]] <- read_html(scrape.df$links[[i]]) %>%
     html_nodes(css = ".dig-artikel") %>%
     html_text()
   
