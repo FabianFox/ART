@@ -8,7 +8,8 @@
 # Issues:
 # - Update code (see: https://callumgwtaylor.github.io/blog/2018/02/01/using-rselenium-and-docker-to-webscrape-in-r-using-the-who-snake-database/)
 # - RSelenium is not on CRAN anymore (09.05.2018)
-#   + Solution: Install archived version
+#   + Fix: Install archived version (see below)
+#   + Fix: Install from GitHub 
 
 #library(devtools)
 #install_version("binman", version = "0.1.0", repos = "https://cran.uni-muenster.de/")
