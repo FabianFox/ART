@@ -29,7 +29,7 @@ p_load(RSelenium, tidyverse, rvest, stringr)
 # ------------------------------------------------ #
 
 # Initialize the RSelenium server running chrome
-remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 4445L, browser = "chrome")
+remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 4445L, browser = "firefox")
 
 # Open the client to steer the browser
 rD <- remDr[["client"]]
