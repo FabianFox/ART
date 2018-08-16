@@ -24,7 +24,7 @@ paste0("http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmediz
 # (1) Get all article teasers
 type <- vector("list", length = 9)
 
-for(i in seq_along(links)){
+for(i in seq_along(type)){
   url <- paste0("http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmedizin*%22&suchzeitraum=all&quellenGroup=SP&pageNumber=", i)
   type[[i]] <- html_text(html_nodes(read_html(url), css = ".search-teaser div"))
   
@@ -77,4 +77,9 @@ for(i in seq_along(scrape.df$links)){
   Sys.sleep(sample(seq(0, 3.5, 0.5), 1))
 }
 
-saveRDS(object = articles, file = "C:\\Users\\guelzauf\\Seafile\\Meine Bibliothek\\Projekte\\SpiegelArticles_100718.RDS")
+# Put the articles into the data frame with meta information
+SPcorpus.df <- scrape.df %>%
+  mutate(data = articles)
+
+# Save
+saveRDS(object = scrape.df, file = "./output/SPcorpus.RDS")
