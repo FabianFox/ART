@@ -36,7 +36,7 @@ rD <- remDr[["client"]]
 
 # Navigate to the SZ
 # Search for: Reproduktionsmedizin*
-# from 02.01.1992 (earliest) to 31.12.2016
+# from 02.01.1992 (earliest) to 31.12.2017
 # only in the printed issues of "Süddeutsche Zeitung"
 
 # Go to the homepage
