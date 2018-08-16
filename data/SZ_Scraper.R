@@ -73,18 +73,79 @@ print$clickElement()
 
 # Get the articles
 # ------------------------------------------------ #
-articles <- vector(mode = "character", length = 356)
+# (1) Kommentar
+# Open article type window
+articleType <- rD$findElement(using = "css selector", "#Numeric_Box6 .menuItemSub")
+articleType$clickElement()
 
-# The actual loop
-for(i in seq(355, 354)) {
-  print(paste0("Scraping article ", i, " of 355"))
-  
+# Choose: Kommentar
+comment <- rD$findElement(using = "css selector", "#NumericBox_ARTIKELTYPID_content_unselected > div:nth-child(5) > a:nth-child(1)")
+comment$clickElement()
+
+SZcomment <- vector(mode = "character", length = 18)
+SZcommentMeta <- vector(mode = "character", length = 18)
+
+# Meta information
+SZcommentMeta <- read_html(rD$getPageSource()[[1]]) %>%
+  html_nodes(".hitInfo") %>%
+  html_text() %>%
+  rev() # I scrape from oldest to youngest below
+
+# The actual loop (articles)
+for(i in seq(0, 18)) {
+  print(paste0("Scraping article ", i, " of ", length(SZcomment)))
+  num <- i + 1
   rD$navigate(paste0("https://archiv.szarchiv.de/Portal/restricted/Fulltext.act?index=", i))
   content <- read_html(rD$getPageSource()[[1]])
-  articles[[i]] <- content %>%
-    html_nodes(css = "font") %>%
+  
+  SZcomment[[num]] <- content %>%
+    html_nodes(css = "p") %>%
     html_text() %>%
     paste0(., collapse = " ")
   
-  Sys.sleep(sample(seq(0, 3.5, 0.5), 1))
+  Sys.sleep(sample(seq(0, 5, 0.5), 1))
 }
+
+# ------------------------------------------------ #
+
+# (2) Interview
+# Open article type window
+articleType <- rD$findElement(using = "css selector", "#Numeric_Box6 .menuItemSub")
+articleType$clickElement()
+
+# Choose: Interview
+interview <- rD$findElement(using = "css selector", "#NumericBox_ARTIKELTYPID_content_unselected > div:nth-child(6)")
+interview$clickElement()
+
+SZinterview <- vector(mode = "character", length = 17)
+SZinterviewMeta <- vector(mode = "character", length = 17)
+
+# Meta information
+SZinterviewMeta <- read_html(rD$getPageSource()[[1]]) %>%
+  html_nodes(".hitInfo") %>%
+  html_text() %>%
+  rev() # I scrape from oldest to youngest below
+
+# The actual loop
+for(i in seq(0, 17)) {
+  print(paste0("Scraping article ", i, " of ", length(SZinterview)))
+  num <- i + 1
+  rD$navigate(paste0("https://archiv.szarchiv.de/Portal/restricted/Fulltext.act?index=", i))
+  content <- read_html(rD$getPageSource()[[1]])
+  
+  SZinterview[[num]] <- content %>%
+    html_nodes(css = "p") %>%
+    html_text() %>%
+    paste0(., collapse = " ")
+  
+  Sys.sleep(sample(seq(0, 5, 0.5), 1))
+}
+
+# Put together into a data frame
+SZcorpus <- tibble(
+  type = c(rep("comment", length(SZcomment)), rep("interview", length(SZinterview))),
+  data = c(SZcomment, SZinterview),
+  meta = c(SZcommentMeta, SZinterviewMeta)
+)
+
+# saveRDS(object = SZcorpus, file = "./output/SZcorpus.RDS")
