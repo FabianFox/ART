@@ -15,7 +15,7 @@
 # Load packages
 if (!require("pacman")) install.packages("pacman")
 
-p_load(tidyverse, rvest, stringr, rzeit2, diezeit)
+p_load(tidyverse, rvest, stringr, rzeit2, diezeit, httr)
 
 # Die Zeit API-key
 apikey <- read_lines("C:/Users/guelzauf/Seafile/Meine Bibliothek/Projekte/diezeit_apikey.txt")
@@ -24,6 +24,22 @@ apikey <- read_lines("C:/Users/guelzauf/Seafile/Meine Bibliothek/Projekte/diezei
 ARTsearch <- get_content(query = "Reproduktionsmedizin", api_key = apikey, limit = 200)
 
 # Get the articles
-# Many paywalled but might be due to the function
-ARTarticles <- get_article_text(ARTsearch$content$href, timeout = 2)
+links <- ARTsearch$content$href %>%
+  paste0(., "/komplettansicht")
+
+# Check for multiple pages
+multipage <- map(links, ~{
+  Sys.sleep(sample(seq(0, 3, 0.5), 1))
+  http_error(.)})
+
+# Append URL for those with multiple pages
+links.df <- tibble(
+  links = ARTsearch$content$href,
+  test = unlist(multipage)
+) %>%
+  mutate(links =
+           case_when(test == FALSE ~ paste0(links, "/komplettansicht"),
+                     test == TRUE ~ links))
+
+# Get the articles with rvest
 
