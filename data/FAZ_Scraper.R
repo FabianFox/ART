@@ -80,7 +80,8 @@ interviewMeta <- read_html(rD$getPageSource()[[1]]) %>%
 
 interviewArticles <- read_html(rD$getPageSource()[[1]]) %>%
   html_nodes("#f .text") %>%
-  html_text()
+  html_text() %>%
+  .[seq(1, 16, 2)]
 
 interviewTitle <- read_html(rD$getPageSource()[[1]]) %>%
   html_nodes(".docTitle") %>%
@@ -112,13 +113,15 @@ show <- rD$findElement("css", "#f_c6")
 show$clickElement()
 
 # Save the articles and meta information
+# (articles only available until ~1992)
 commentMeta <- read_html(rD$getPageSource()[[1]]) %>%
   html_nodes(".docSource") %>%
   html_text()
 
 commentArticles <- read_html(rD$getPageSource()[[1]]) %>%
   html_nodes("#f .text") %>%
-  html_text()
+  html_text() %>%
+  .[seq(1, 56, 2)]
 
 commentTitle <- read_html(rD$getPageSource()[[1]]) %>%
   html_nodes(".docTitle") %>%
@@ -131,3 +134,6 @@ FAZcorpus <- tibble(
   meta = c(commentMeta, interviewMeta),
   title = c(commentTitle, interviewTitle)
 )
+
+# Save
+saveRDS(object = FAZcorpus, file = "./output/FAZcorpus.RDS")
