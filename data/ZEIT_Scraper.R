@@ -42,4 +42,17 @@ links.df <- tibble(
                      test == TRUE ~ links))
 
 # Get the articles with rvest
+ZEITarticles <- vector(mode = "list", length = nrow(links.df))
 
+scrape <- function(x) {
+  read_html(x) %>%
+    html_nodes(".article-page p") %>% # Check the node
+    html_text() 
+}
+
+# Works but due to limited number of queries articles are behind a paywall
+# RSelenium might be a solution (using phantomJS)
+ZEITarticles <- map(links.df$links[1:5], ~{
+  Sys.sleep(sample(seq(0, 3, 0.5), 1))
+  scrape(.)
+  })
