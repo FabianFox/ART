@@ -58,3 +58,6 @@ SZ.df <- art.df %>%
 # Combine
 art.df <- list(FAZ.df, SP.df, SZ.df) %>%
   bind_rows()
+
+# Housekeeping
+rm(list = setdiff(ls(), "art.df"))
