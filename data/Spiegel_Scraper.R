@@ -2,81 +2,121 @@
 # Project: ART             #
 # 'Reproduktionsmedizin'   #
 # Der Spiegel              #
-# 24.07.2018               #
+#                          #
 ############################
 
-# Issues: Need to push to Git
+# Issues
+# ---------------------------------------------------------------------------- #
+# - none
 
-# Load packages
+# Setup
+# ---------------------------------------------------------------------------- #
+# Load/install packages
 if(!require(pacman)) install.packages("pacman")
-p_load(tidyverse, rvest, stringr, httr)
+p_load(tidyverse, rvest, stringr, httr, lubridate)
 
 # Search for articles in the archive of "Der Spiegel"
 # Search term: "Reproduktionsmedizin*"
-# ------------------------------------------------ #
+# Wildcard-operator is available (see: https://bit.ly/2OFpnbk)
+# ---------------------------------------------------------------------------- #
 
-# First page
+# Initial page (page 1)
+# Search term: "Reproduktionsmedizin*"
 url <- "http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmedizin*%22&suchzeitraum=all&quellenGroup=SP"
 
-# Consecutive pages (2-8)
-paste0("http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmedizin*%22&suchzeitraum=all&quellenGroup=SP&pageNumber=", "2")
+# Number of pages results
+page_num <- url %>%
+  read_html() %>%
+  html_nodes(":nth-child(3) .search-page-count") %>%
+  html_text() %>%
+  str_extract(., "[:digit:]+$") %>%
+  strtoi()
 
-# (1) Get all article teasers
-type <- vector("list", length = 9)
+# Create a dataframe with one row per article
+spon.df <- tibble(
+  link = paste0(url, "&pageNumber=", 1:page_num)
+)
 
-for(i in seq_along(type)){
-  url <- paste0("http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmedizin*%22&suchzeitraum=all&quellenGroup=SP&pageNumber=", i)
-  type[[i]] <- html_text(html_nodes(read_html(url), css = ".search-teaser div"))
+# Get the content
+# ---------------------------------------------------------------------------- #
+# CSS-Selectors (Nodes)
+# Meta: .search-teaser div
+# Title: .search-teaser .headline
+# Teaser: .article-intro
+# Article content: .article.intro a -> href
+
+# Create a function that extracts the relevant information
+spon_scraper <- function(x) {
+  page <- read_html(x)
   
-  Sys.sleep(sample(seq(0, 2, 0.5), 1))
-}
-
-# (2) Identify all interviews and newspaper commentaries
-types.df <- tibble(teaser = unlist(type)) %>%
-  mutate(type = case_when(str_detect(teaser, "Interview") == TRUE ~ "Interview",
-                          str_detect(teaser, "Kommentar") == TRUE ~ "Kommentar")
-         )
-
-# (3) Get the links to all articles on all pages
-links <- vector("list", length = 9)
-
-for(i in seq_along(links)){
-  url <- paste0("http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmedizin*%22&suchzeitraum=all&quellenGroup=SP&pageNumber=", i)
-  links[[i]] <- html_attr(html_nodes(read_html(url), css = ".article-intro a"), "href")
-  
-  Sys.sleep(sample(seq(0, 2, 0.5), 1))
-}
-
-# As tibble
-scrape.over <- tibble(links = unlist(links))
-
-# (4) Merge types.df and links
-scrape.df <- cbind(types.df, scrape.over)
-
-# Only articles published in print issues
-scrape.df <- scrape.df %>%
-  mutate(print = str_detect(links, "print")) %>%
-  filter(print == TRUE & !is.na(type)) %>%
-  select(-print) %>%
-  mutate(links = paste0("http://www.spiegel.de", links),
-         date = str_extract(teaser, "[:digit:]{2}.[:digit:]{2}.[:digit:]{4}"))
-
-scrape.over <- scrape.over %>%
-  mutate(links = paste0("http://www.spiegel.de", links))
-
-# (2) Now we can access the articles via scrape.over$links
-articles <- vector("character", length = nrow(scrape.df))
-
-for(i in seq_along(scrape.df$links)){
-  print(paste0("Scraping articles ", i, " of ", length(scrape.df$links)))
-  
-  articles[[i]] <- read_html(scrape.df$links[[i]]) %>%
-    html_nodes(css = ".dig-artikel") %>%
+  meta <- page %>%
+    html_nodes(".search-teaser div") %>%
     html_text()
   
-  Sys.sleep(sample(seq(0, 3.5, 0.5), 1))
+  title <- page %>%
+    html_nodes(".search-teaser .headline") %>%
+    html_text()
+  
+  teaser <- page %>%
+    html_nodes(".article-intro") %>%
+    html_text()
+  
+  article_link <- page %>%
+    html_nodes(".article-intro a") %>%
+    html_attr("href")
+  
+  df <- tibble(meta, title, teaser, article_link)
 }
 
+# Map the function
+spon.df <- map_dfr(
+  spon.df$link, ~{
+    Sys.sleep(sample(seq(0, 3, 0.5), 1))
+    spon_scraper(.x)
+  })
+
+# Data cleaning
+# ---------------------------------------------------------------------------- #
+# Identify all interviews and newspaper commentaries
+spon.df <- spon.df %>%
+  mutate(type = case_when(str_detect(meta, "[I|i]nterview") == TRUE ~ "Interview",
+                          str_detect(meta, "[K|k]ommentar") == TRUE ~ "Kommentar"),
+         article_link = if_else(str_detect(article_link, "^/"), 
+                                paste0("https://www.spiegel.de", article_link),
+                                article_link)) %>%
+         separate(meta, into = c("source", "section", "date"), 
+                  sep = "[:blank:]-[:blank:]", remove = FALSE) %>%
+           mutate_all(~str_trim(., "both")) %>%                     # Some articles only provide title & date
+           mutate(date = ymd(parse_date_time(date, "d!.m!*.Y!")))
+
+
+# Get the content of the articles
+# ---------------------------------------------------------------------------- #
+# Create a function
+sp_scrape_art <- function(x){
+  read_html(x) %>%
+    html_nodes(".dig-artikel") %>%
+    html_text()
+}
+
+# Scrape safely
+sp_scrape_art <- possibly(sp_scrape_art, NA_character_) 
+
+# Map over links
+spon.df <- slice(spon.df, 1:10) %>%
+    mutate(text = 
+             map(article_link, ~{
+               Sys.sleep(sample(seq(0, 3, 0.5), 1))
+               sp_scrape_art(.x)
+               })
+           )
+
+# UNDER CONSTRUCTION
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
 # Put the articles into the data frame with meta information
 SPcorpus.df <- scrape.df %>%
   mutate(data = articles)
