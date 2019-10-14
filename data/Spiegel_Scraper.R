@@ -43,7 +43,7 @@ spon.df <- tibble(
 # Meta: .search-teaser div
 # Title: .search-teaser .headline
 # Teaser: .article-intro
-# Article content: .article.intro a -> href
+# Article content (href-attribute): .article.intro a
 
 # Create a function that extracts the relevant information
 spon_scraper <- function(x) {
@@ -89,6 +89,17 @@ spon.df <- spon.df %>%
            mutate_all(~str_trim(., "both")) %>%                     # Some articles only provide title & date
            mutate(date = ymd(parse_date_time(date, "d!.m!*.Y!")))
 
+# Save the warning message
+last.message <- names(warnings())
+
+# Extract rows affected by warning
+warning.rows <- strtoi(str_extract_all(last.message, "[:digit:]+(?=[,|\\]])")[[1]])
+
+# Warning affects articles without "section"-info. Section (features the date) 
+# needs to be pushed one column to the right.
+spon.df[warning.rows, "date"] <- ymd(parse_date_time(spon.df[warning.rows, "section"][[1]], "%d.%m.%Y"))
+spon.df[warning.rows, "section"] <- NA_character_
+
 
 # Get the content of the articles
 # ---------------------------------------------------------------------------- #
@@ -103,7 +114,7 @@ sp_scrape_art <- function(x){
 sp_scrape_art <- possibly(sp_scrape_art, NA_character_) 
 
 # Map over links
-spon.df <- slice(spon.df, 1:10) %>%
+test.df <- slice(spon.df, 20:25) %>%                 # Test run on 10 articles
     mutate(text = 
              map(article_link, ~{
                Sys.sleep(sample(seq(0, 3, 0.5), 1))
