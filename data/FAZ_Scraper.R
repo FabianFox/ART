@@ -66,7 +66,7 @@ searchbtn <- rD$findElement("css", "#f_c0")
 searchbtn$clickElement()
 
 # All articles
-allArticles <- rD$findElement("css", "#f_selectAll")
+allArticles <- rD$findElement("css", "#f_selectAllnull")
 allArticles$clickElement()
 
 # Show them
