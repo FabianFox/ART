@@ -2,32 +2,31 @@
 # Project: ART             #
 # 'Reproduktionsmedizin'   #
 # FAZ                      #
-# 16.08.2018               #
 ############################
 
 # Issues:
 
-# Start Docker running selenium/standalone-chrome:
-# docker run -d -p 4445:4444 selenium/standalone-chrome
+# Start Docker running selenium/standalone-firefox:
+# Initialize in shell:
+# docker run -d -p 4445:4444  selenium/standalone-firefox:3
 
-# ------------------------------------------------ #
-
-# Load packages
+# Load/install packages
+# ---------------------------------------------------------------------------- #
 if (!require("pacman")) install.packages("pacman")
-
 p_load(RSelenium, tidyverse, rvest, stringr)
 
-# ------------------------------------------------ #
-
+# Prepare RSelenium to take control of Firefox
+# ---------------------------------------------------------------------------- #
 # Initialize the RSelenium server running chrome
-remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 4445L, browser = "firefox")
+remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 8887L, browser = "firefox")
 
 # Open the client to steer the browser
 rD <- remDr[["client"]]
 
-# Navigate to the FAZ
+# Prepare the FAZ-Archiv
+# ---------------------------------------------------------------------------- #
 # Search for: 'Reproduktionsmedizin*'
-# from 02.01.1992 (earliest) to 31.12.2017
+# from 01.01.1990 (earliest) to 31.12.2017
 # only in the printed issues of "FAZ"
 
 # Go to the homepage
@@ -57,35 +56,80 @@ fromDate$sendKeysToElement(list("01.01.1990"))
 source <- rD$findElement("css", "#f_source > option:nth-child(2)")
 source$clickElement()
 
-# Type: Interview
+# Type: Interview #f_rubric_formula > option:nth-child(7) | Kommentar (#f_rubric_formula > option:nth-child(8))
 typeInterview <- rD$findElement("css", "#f_rubric_formula > option:nth-child(8)")
 typeInterview$clickElement()
 
 # Search
+# ---------------------------------------------------------------------------- #
 searchbtn <- rD$findElement("css", "#f_c0")
 searchbtn$clickElement()
 
+# Number of pages with results
+num_pages <- read_html(rD$getPageSource()[[1]]) %>%
+  html_nodes("div.summary:nth-child(1) > div:nth-child(1) > span:nth-child(1)") %>%
+  html_text() %>%
+  str_extract(., "[:digit:]+") %>%
+  strtoi()
+
+# Round
+num_pages <- ceiling(num_pages / 30)
+
+# Show 30 per page (max)
+showmore <- rD$findElement("css", "#f_maxHitnull > option:nth-child(3)")
+showmore$clickElement()
+
+# Get the current URL
+url <- rD$getCurrentUrl()
+
+link.df <- tibble(
+  links = paste0("https://www.faz-biblionet.de/faz-portal/faz-archiv?q=%27Reproduktionsmedizin*%27&source=&max=30&sort=&offset=",
+                 seq(0, (num_pages - 1) * 30, 30),
+                 "&&_ts=1571407765142&rubric_formula=meinung.pu%2Cty.&DT_from=01.01.1990&DT_to=31.12.2017&timeFilterType=0#hitlist")
+)
+
+
+################################################################################
+#                              WORK IN PROGRESS                                #
+################################################################################
+
+# Get the URL of the first page with all articles 
+# ---------------------------------------------------------------------------- #
 # All articles
 allArticles <- rD$findElement("css", "#f_selectAllnull")
 allArticles$clickElement()
 
 # Show them
-show <- rD$findElement("css", "#f_c6")
+show <- rD$findElement("css", "#f_c9")
 show$clickElement()
 
-# Save the articles and meta information
-interviewMeta <- read_html(rD$getPageSource()[[1]]) %>%
-  html_nodes(".docSource") %>%
-  html_text()
+# Save the information
+# Create a function for this purpose
+# runs over: rD$getPageSource()[[1]]
+faz_scraper <- function(x){
+  page <- read_html(x)
+  
+  meta <- page %>%
+    html_nodes(".docSource") %>%
+    html_text()
+  
+  title <- page %>%
+    html_nodes(".docTitle") %>%
+    html_text()
+  
+  article <- page %>%
+    html_nodes("#f .text") %>%
+    html_text() %>%
+    .[seq(1, length(.), 2)]
+  
+  df <- tibble(meta, title, article)
+}
 
-interviewArticles <- read_html(rD$getPageSource()[[1]]) %>%
-  html_nodes("#f .text") %>%
-  html_text() %>%
-  .[seq(1, 16, 2)]
+# Wrap as safe function
+faz_scraper <- possibly(faz_scraper, "NA_character_")
 
-interviewTitle <- read_html(rD$getPageSource()[[1]]) %>%
-  html_nodes(".docTitle") %>%
-  html_text()
+# Test (works fine!)
+test.df <- faz_scraper(rD$getPageSource()[[1]])
 
 # ------------------------------------------------ #
 
