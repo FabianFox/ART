@@ -153,5 +153,8 @@ faz.df <- map_dfr(
     faz_scrape(url)
   })
 
+# Exit
+remDr$server$stop()
+
 # Save
 # saveRDS(object = FAZcorpus, file = "./output/FAZcorpus.RDS")
