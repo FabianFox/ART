@@ -7,21 +7,16 @@
 
 # Issues:
 
-# Start Docker running selenium/standalone-chrome:
-# docker run -d -p 4445:4444 selenium/standalone-chrome
-
-# ------------------------------------------------ #
-
-# Load packages
+# Load/install packages
+# ---------------------------------------------------------------------------- #
 if (!require("pacman")) install.packages("pacman")
-
 p_load(tidyverse, rvest, stringr, rzeit2, diezeit, httr)
 
 # Die Zeit API-key
 apikey <- read_lines("C:/Users/guelzauf/Seafile/Meine Bibliothek/Projekte/diezeit_apikey.txt")
 
 # Search for articles
-ARTsearch <- get_content(query = "Reproduktionsmedizin", api_key = apikey, limit = 200)
+ARTsearch <- get_content(query = "Reproduktionsmedizin", api_key = apikey, limit = 1000)
 
 # Get the articles
 links <- ARTsearch$content$href %>%
