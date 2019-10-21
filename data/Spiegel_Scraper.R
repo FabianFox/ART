@@ -22,7 +22,7 @@ p_load(tidyverse, rvest, stringr, httr, lubridate)
 
 # Initial page (page 1)
 # Search term: "Reproduktionsmedizin*"
-url <- "http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmedizin*%22&suchzeitraum=all&quellenGroup=SP"
+url <- "http://www.spiegel.de/suche/index.html?suchbegriff=%22Reproduktionsmedizin*%22&suchzeitraum=all&quellenGroup=SPOX&quellenGroup=SP"
 
 # Number of pages results
 page_num <- url %>%
@@ -67,6 +67,9 @@ spon_scraper <- function(x) {
   
   df <- tibble(meta, title, teaser, article_link)
 }
+
+# Wrap as safe-function
+spon_scraper <- possibly(spon_scraper, "NA_real_")
 
 # Map the function
 spon.df <- map_dfr(
