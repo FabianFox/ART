@@ -100,15 +100,6 @@ link.df <- tibble(
 
 # Create functions to extract the relevant information
 # ---------------------------------------------------------------------------- #
-rD$navigate(link.df$links[[2]])
-
-allArticles <- rD$findElement("css", "#f_selectAllnull")
-allArticles$clickElement()
-
-# Show them
-show <- rD$findElement("css", "#f_c9")
-show$clickElement()
-
 # Navigate to articles on each page 
 faz_navigate <- function(x){
   # Go to page
