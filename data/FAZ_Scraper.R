@@ -5,10 +5,13 @@
 ############################
 
 # Issues:
+# - None
 
-# Start Docker running selenium/standalone-firefox:
-# Initialize in shell:
-# docker run -d -p 4445:4444  selenium/standalone-firefox:3
+# Start Docker through PowerShell and initialize a selenium/standalone-firefox:
+# In PowerShell:
+# Command: docker run -d -p 4445:4444  selenium/standalone-firefox:3
+# Find: docker ps
+# Stop: docker stop 'name'
 
 # Load/install packages
 # ---------------------------------------------------------------------------- #
@@ -24,6 +27,8 @@ remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 8887L, brows
 rD <- remDr[["client"]]
 
 # Prepare the FAZ-Archiv
+# Could also be done manually. But we need Selenium later. Hence, we can also
+# configure the page with Selenium right from the start.
 # ---------------------------------------------------------------------------- #
 # Search for: 'Reproduktionsmedizin*'
 # from 01.01.1990 (earliest) to 31.12.2017
@@ -53,18 +58,26 @@ fromDate$clearElement()
 fromDate$sendKeysToElement(list("01.01.1990"))
 
 # Dropdown: Source (only FAZ print)
-source <- rD$findElement("css", "#f_source > option:nth-child(2)")
-source$clickElement()
+# source <- rD$findElement("css", "#f_source > option:nth-child(2)")
+# source$clickElement()
 
-# Type: Interview #f_rubric_formula > option:nth-child(7) | Kommentar (#f_rubric_formula > option:nth-child(8))
+# Type: Interview/Kommentar
+# Interview: #f_rubric_formula > option:nth-child(7) | Kommentar (#f_rubric_formula > option:nth-child(8))
 typeInterview <- rD$findElement("css", "#f_rubric_formula > option:nth-child(8)")
 typeInterview$clickElement()
 
 # Search
 # ---------------------------------------------------------------------------- #
+# Start search
 searchbtn <- rD$findElement("css", "#f_c0")
 searchbtn$clickElement()
 
+# Show 30 per page
+showmore <- rD$findElement("css", "#f_maxHitnull > option:nth-child(3)")
+showmore$clickElement()
+
+# Create the URLs that hold the articles
+# ---------------------------------------------------------------------------- #
 # Number of pages with results
 num_pages <- read_html(rD$getPageSource()[[1]]) %>%
   html_nodes("div.summary:nth-child(1) > div:nth-child(1) > span:nth-child(1)") %>%
@@ -75,27 +88,20 @@ num_pages <- read_html(rD$getPageSource()[[1]]) %>%
 # Round
 num_pages <- ceiling(num_pages / 30)
 
-# Show 30 per page (max)
-showmore <- rD$findElement("css", "#f_maxHitnull > option:nth-child(3)")
-showmore$clickElement()
-
 # Get the current URL
-url <- rD$getCurrentUrl()
+url <- rD$getCurrentUrl()[[1]]
 
+# Create a dataframe with the respective URLs for all pages
 link.df <- tibble(
-  links = paste0("https://www.faz-biblionet.de/faz-portal/faz-archiv?q=%27Reproduktionsmedizin*%27&source=&max=30&sort=&offset=",
+  links = paste0(str_extract(url, ".+(?=[:digit:]&_ts)"),
                  seq(0, (num_pages - 1) * 30, 30),
-                 "&&_ts=1571407765142&rubric_formula=meinung.pu%2Cty.&DT_from=01.01.1990&DT_to=31.12.2017&timeFilterType=0#hitlist")
-)
+                 str_extract(url, "(?<=offset=[:digit:]).+"))
+  )
 
-
-################################################################################
-#                              WORK IN PROGRESS                                #
-################################################################################
-
-# Get the URL of the first page with all articles 
+# Create functions to extract the relevant information
 # ---------------------------------------------------------------------------- #
-# All articles
+rD$navigate(link.df$links[[2]])
+
 allArticles <- rD$findElement("css", "#f_selectAllnull")
 allArticles$clickElement()
 
@@ -103,10 +109,29 @@ allArticles$clickElement()
 show <- rD$findElement("css", "#f_c9")
 show$clickElement()
 
-# Save the information
-# Create a function for this purpose
-# runs over: rD$getPageSource()[[1]]
-faz_scraper <- function(x){
+# Navigate to articles on each page 
+faz_navigate <- function(x){
+  # Go to page
+  rD$navigate(x)
+  
+  # Wait for page to load
+  Sys.sleep(1.5)
+  
+  # Show all articles on the respective page
+  allArticles <- rD$findElement("css", "#f_selectAllnull")
+  allArticles$clickElement()
+  
+  # Show them
+  show <- rD$findElement("css", "#f_c9")
+  show$clickElement()
+  
+  Sys.sleep(1.5)
+  
+  rD$getCurrentUrl()[[1]]
+}
+
+# Save the information of each page
+faz_scrape <- function(x){
   page <- read_html(x)
   
   meta <- page %>%
@@ -126,58 +151,16 @@ faz_scraper <- function(x){
 }
 
 # Wrap as safe function
-faz_scraper <- possibly(faz_scraper, "NA_character_")
+faz_navigate <- possibly(faz_navigate, "NA_character_")
+faz_scrape <- possibly(faz_scrape, "NA_character_")
 
-# Test (works fine!)
-test.df <- faz_scraper(rD$getPageSource()[[1]])
-
-# ------------------------------------------------ #
-
-# GoBack
-rD$goBack()
-
-# Type: Interview
-typeComment <- rD$findElement("css", "#f_rubric_formula > option:nth-child(9)")
-typeComment$clickElement()
-
-# Search
-searchbtn <- rD$findElement("css", "#f_c5")
-searchbtn$clickElement()
-
-# Show 30 per page
-showmore <- rD$findElement("css", "#f_maxHits > option:nth-child(3)")
-showmore$clickElement()
-
-# All articles
-allArticles <- rD$findElement("css", "#f_selectAll")
-allArticles$clickElement()
-
-# Show them
-show <- rD$findElement("css", "#f_c6")
-show$clickElement()
-
-# Save the articles and meta information
-# (articles only available until ~1992)
-commentMeta <- read_html(rD$getPageSource()[[1]]) %>%
-  html_nodes(".docSource") %>%
-  html_text()
-
-commentArticles <- read_html(rD$getPageSource()[[1]]) %>%
-  html_nodes("#f .text") %>%
-  html_text() %>%
-  .[seq(1, 56, 2)]
-
-commentTitle <- read_html(rD$getPageSource()[[1]]) %>%
-  html_nodes(".docTitle") %>%
-  html_text()
-
-# Put everything together
-FAZcorpus <- tibble(
-  type = c(rep("comment", length(commentMeta)), rep("interview", length(interviewMeta))),
-  data = c(commentArticles, interviewArticles),
-  meta = c(commentMeta, interviewMeta),
-  title = c(commentTitle, interviewTitle)
-)
+# Map over the individual pages
+faz.df <- map_dfr(
+  link.df$links, ~{
+    Sys.sleep(sample(seq(0, 3, 0.5), 1))
+    url <- faz_navigate(.x)
+    faz_scrape(url)
+  })
 
 # Save
-saveRDS(object = FAZcorpus, file = "./output/FAZcorpus.RDS")
+# saveRDS(object = FAZcorpus, file = "./output/FAZcorpus.RDS")
