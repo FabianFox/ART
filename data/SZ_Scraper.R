@@ -6,30 +6,25 @@
 ############################
 
 # Issues:
-# - Update code (see: https://callumgwtaylor.github.io/blog/2018/02/01/using-rselenium-and-docker-to-webscrape-in-r-using-the-who-snake-database/)
-# - RSelenium is not on CRAN anymore (09.05.2018)
-#   + Fix: Install archived version (see below)
-#   + Fix: Install from GitHub 
+# - None
 
-#library(devtools)
-#install_version("binman", version = "0.1.0", repos = "https://cran.uni-muenster.de/")
-#install_version("wdman", version = "0.2.2", repos = "https://cran.uni-muenster.de/")
-#install_version("RSelenium", version = "1.7.1", repos = "https://cran.uni-muenster.de/")
+# Start Docker through PowerShell and initialize a selenium/standalone-firefox:
+# In PowerShell:
+# Command: docker run -d -p 4445:4444  selenium/standalone-firefox:3
+# Find: docker ps
+# Stop: docker stop 'name'
 
-# Start Docker running selenium/standalone-chrome:
-# docker run -d -p 4445:4444 selenium/standalone-chrome
-
-# Load packages
+# Load packages/install packages
+# ---------------------------------------------------------------------------- #
 if (!require("pacman")) install.packages("pacman")
-
 p_load(RSelenium, tidyverse, rvest, stringr)
 
 # Search for articles in the archive of "SZ"
 # Search term: "Reproduktionsmedizin"
-# ------------------------------------------------ #
+# ---------------------------------------------------------------------------- #
 
-# Initialize the RSelenium server running chrome
-remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 4445L, browser = "firefox")
+# Initialize the RSelenium server running firefox
+remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 8887L, browser = "firefox")
 
 # Open the client to steer the browser
 rD <- remDr[["client"]]
@@ -42,44 +37,62 @@ rD <- remDr[["client"]]
 # Go to the homepage
 rD$navigate("https://archiv.szarchiv.de/Portal/restricted/Start.act")
 
-# Navigate to the advanced search
-adv_search <- rD$findElement(using = "css selector", ".navLinkActive")
-adv_search$clickElement()
-
 # Send search term
-search_txt <- rD$findElement(using = 'css selector', '#searchTerm')
+search_txt <- rD$findElement("css", "#searchTerm")
 search_txt$sendKeysToElement(list("'Reproduktionsmedizin*'"))
 
 # Configure time span and sources
-fromDate <- rD$findElement(using = 'css selector', '#fromDate')
+fromDate <- rD$findElement("css", '#dateChip')
 fromDate$clickElement()
-fromDate$clearElement()
-fromDate$sendKeysToElement(list("02.01.1992"))
 
-toDate <- rD$findElement(using = "css", "#toDate")
-toDate$clickElement()
-toDate$clearElement()
-toDate$sendKeysToElement(list("31.12.2017"))
+# Start date
+startDate <- rD$findElement("css", "#fromDate")
+startDate$clickElement()
+startDate$clearElement()
+startDate$sendKeysToElement(list("01.01.1990"))
 
-# Search
-search_btn <- rD$findElement(using = 'css selector', '#searchBtn')
-search_btn$clickElement()
+# End date
+endDate <- rD$findElement("css", "#toDate")
+endDate$clickElement()
+endDate$clearElement()
+endDate$sendKeysToElement(list("31.12.2017"))
 
 # Limit results to print issues
-source <- rD$findElement(using = "css selector", "#Numeric_Box2 .menuItemSub")
+source <- rD$findElement("css", "#sourcecChip > h4:nth-child(3)")
 source$clickElement()
-print <- rD$findElement(using = 'css selector', '#NumericBox_DOCSRC_content_unselected :nth-child(1) .misubSub') # child may vary between 1 & 2
-print$clickElement()
+
+# not "Beilagen"
+no_supp <- rD$findElement("css", "#DIZSZ")
+no_supp$clickElement()
+
+# not "Bayern"
+no_bavaria <- rD$findElement("css", "#DIZBY")
+no_bavaria <- rD$clickElement()
+
+# not "Überregionale"
+no_int <- rD$findElement("css", "#DIZUEREG")
+no_int <- rD$clickElement()
+
+# Search
+search_btn <- rD$findElement("css", '#searchBtn')
+search_btn$clickElement()
+
+# UNDER CONSTRUCTION
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------- #
 
 # Get the articles
 # ------------------------------------------------ #
 # (1) Kommentar
 # Open article type window
-articleType <- rD$findElement(using = "css selector", "#Numeric_Box6 .menuItemSub")
+articleType <- rD$findElement("css", "#Numeric_Box6 .menuItemSub")
 articleType$clickElement()
 
 # Choose: Kommentar
-comment <- rD$findElement(using = "css selector", "#NumericBox_ARTIKELTYPID_content_unselected > div:nth-child(5) > a:nth-child(1)")
+comment <- rD$findElement("css", "#NumericBox_ARTIKELTYPID_content_unselected > div:nth-child(5) > a:nth-child(1)")
 comment$clickElement()
 
 SZcomment <- vector(mode = "character", length = 18)
@@ -110,11 +123,11 @@ for(i in seq(0, 18)) {
 
 # (2) Interview
 # Open article type window
-articleType <- rD$findElement(using = "css selector", "#Numeric_Box6 .menuItemSub")
+articleType <- rD$findElement("css", "#Numeric_Box6 .menuItemSub")
 articleType$clickElement()
 
 # Choose: Interview
-interview <- rD$findElement(using = "css selector", "#NumericBox_ARTIKELTYPID_content_unselected > div:nth-child(6)")
+interview <- rD$findElement("css", "#NumericBox_ARTIKELTYPID_content_unselected > div:nth-child(6)")
 interview$clickElement()
 
 SZinterview <- vector(mode = "character", length = 17)
