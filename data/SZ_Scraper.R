@@ -167,7 +167,8 @@ test <- map(link.df$links[11:14], ~ {
   sz_scrape(url)
 })
 
-# (yet to be integrated) PARTS
+# PARTS (yet to be integrated) 
+# ---------------------------------------------------------------------------- #
 # (1) Kommentar
 # Open article type window
 articleType <- rD$findElement("css", "#Numeric_Box6 .menuItemSub")
