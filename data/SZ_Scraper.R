@@ -22,7 +22,7 @@ p_load(RSelenium, tidyverse, rvest, stringr)
 # ---------------------------------------------------------------------------- #
 
 # Initialize the RSelenium server running firefox
-remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 8887L, browser = "firefox")
+remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 8888L, browser = "firefox")
 
 # Open the client to steer the browser
 rD <- remDr[["client"]]
@@ -92,23 +92,34 @@ num_pages <- ceiling(num_articles / 40)
 # Move over pages and extract meta-information
 # ---------------------------------------------------------------------------- #
 
-# This section needs updating.
-
-# meta
+# Functions to extract meta-information
+# (1) Extracts the meta tag
 get_meta <- function(x){
   read_html(rD$getPageSource()[[1]]) %>%
     html_nodes(".hitInfo1 span") %>%
     html_text()
 }
 
+# (2) Jumps to the next page
 jump_next <- function(x){
   click_next <- rD$findElement("css", ".iconGoNext")
   click_next$clickElement()
 }
 
-jump.df <- tibble(
-  times = 1:10
-)
+# Object that stores the information
+# See: https://r4ds.had.co.nz/iteration.html#for-loops
+meta.df <- vector(mode = "list", length = num_pages)
+
+# Loop that fills the object and applies the functions (1) and (2)
+for (page in seq_along(1:(num_pages))) {
+  print(paste0("Scraping content of page ", page))
+  
+  meta.df[[page]] <- get_meta()
+  
+  jump_next()
+  
+  Sys.sleep(sample(seq(2, 7, by = .5), 1))
+}
 
 # Get the articles
 # ---------------------------------------------------------------------------- #
