@@ -121,6 +121,22 @@ for (page in seq_along(1:(num_pages))) {
   Sys.sleep(sample(seq(2, 7, by = .5), 1))
 }
 
+# Clean
+meta.df <- str_split(flatten_chr(meta.df), "/") %>%
+  unlist() %>%
+  enframe() %>%
+  filter(value != "" & value != "Bayern") %>%
+  mutate(date = str_detect(value, "[:digit:]{2}.[:digit:]{2}.[:digit:]{4}")) %>%
+  group_by(date) %>%
+  mutate(row_id = 1:n(),
+         row_id = ifelse(date == FALSE, NA, row_id)) %>%
+  ungroup() %>%
+  fill(row_id, .direction = "down") %>%
+  group_by(row_id) %>%
+  mutate(meta = paste0(value, collapse = ";")) %>%
+  distinct(meta) %>%
+  separate(meta, into = c("date", "source", "departmnent", "word_length", "category"), sep = ";")
+
 # Get the articles
 # ---------------------------------------------------------------------------- #
 url <- "https://archiv.szarchiv.de/Portal/restricted/Fulltext.act?index="
