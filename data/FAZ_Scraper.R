@@ -50,7 +50,7 @@ advbutton$clickElement()
 toDate <- rD$findElement("css", "#f_DT_to")
 toDate$clickElement()
 toDate$clearElement()
-toDate$sendKeysToElement(list("31.12.2017"))
+toDate$sendKeysToElement(list("31.12.2018"))
 
 fromDate <- rD$findElement("css", "#f_DT_from")
 fromDate$clickElement()
@@ -60,11 +60,6 @@ fromDate$sendKeysToElement(list("01.01.1990"))
 # Dropdown: Source (only FAZ print)
 # source <- rD$findElement("css", "#f_source > option:nth-child(2)")
 # source$clickElement()
-
-# Type: Interview/Kommentar
-# Interview: #f_rubric_formula > option:nth-child(7) | Kommentar (#f_rubric_formula > option:nth-child(8))
-typeInterview <- rD$findElement("css", "#f_rubric_formula > option:nth-child(8)")
-typeInterview$clickElement()
 
 # Search
 # ---------------------------------------------------------------------------- #
@@ -106,17 +101,17 @@ faz_navigate <- function(x){
   rD$navigate(x)
   
   # Wait for page to load
-  Sys.sleep(1.5)
+  Sys.sleep(3)
   
   # Show all articles on the respective page
   allArticles <- rD$findElement("css", "#f_selectAllnull")
   allArticles$clickElement()
   
   # Show them
-  show <- rD$findElement("css", "#f_c9")
-  show$clickElement()
+  show <- rD$findElement("css", "#f_c13")                   # This element changes
+  show$clickElement()                                       # conditional on page
   
-  Sys.sleep(1.5)
+  Sys.sleep(3)
   
   rD$getCurrentUrl()[[1]]
 }
@@ -148,13 +143,23 @@ faz_scrape <- possibly(faz_scrape, "NA_character_")
 # Map over the individual pages
 faz.df <- map_dfr(
   link.df$links, ~{
-    Sys.sleep(sample(seq(0, 3, 0.5), 1))
+    Sys.sleep(sample(seq(0, 5, 0.5), 1))
     url <- faz_navigate(.x)
     faz_scrape(url)
   })
 
 # Exit
+# ---------------------------------------------------------------------------- #
 remDr$server$stop()
 
 # Save
+# ---------------------------------------------------------------------------- #
 # saveRDS(object = FAZcorpus, file = "./output/FAZcorpus.RDS")
+
+# Additional parts not necessary at the moment
+# ---------------------------------------------------------------------------- #
+# Restrict to interviews / comments
+# Type: Interview/Kommentar
+# Interview: #f_rubric_formula > option:nth-child(7) | Kommentar (#f_rubric_formula > option:nth-child(8))
+typeInterview <- rD$findElement("css", "#f_rubric_formula > option:nth-child(8)")
+typeInterview$clickElement()
