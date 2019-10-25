@@ -21,7 +21,7 @@ p_load(RSelenium, tidyverse, rvest, stringr)
 # Prepare RSelenium to take control of Firefox
 # ---------------------------------------------------------------------------- #
 # Initialize the RSelenium server running chrome
-remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 8887L, browser = "firefox")
+remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 8888L, browser = "firefox")
 
 # Open the client to steer the browser
 rD <- remDr[["client"]]
@@ -90,13 +90,14 @@ url <- rD$getCurrentUrl()[[1]]
 link.df <- tibble(
   links = paste0(str_extract(url, ".+(?=[:digit:]&_ts)"),
                  seq(0, (num_pages - 1) * 30, 30),
-                 str_extract(url, "(?<=offset=[:digit:]).+"))
+                 str_extract(url, "(?<=offset=[:digit:]).+")),
+  selection = c(13, 15, 15, rep(16, num_pages-6), 15, 15, 13)
   )
 
 # Create functions to extract the relevant information
 # ---------------------------------------------------------------------------- #
 # Navigate to articles on each page 
-faz_navigate <- function(x){
+faz_navigate <- function(x, y){
   # Go to page
   rD$navigate(x)
   
@@ -108,8 +109,8 @@ faz_navigate <- function(x){
   allArticles$clickElement()
   
   # Show them
-  show <- rD$findElement("css", "#f_c13")                   # This element changes
-  show$clickElement()                                       # conditional on page
+  show <- rD$findElement("css", paste0("#f_c", y))                   # This element changes
+  show$clickElement()                                                # conditional on page
   
   Sys.sleep(3)
   
@@ -118,6 +119,7 @@ faz_navigate <- function(x){
 
 # Save the information of each page
 faz_scrape <- function(x){
+  
   page <- read_html(x)
   
   meta <- page %>%
@@ -141,12 +143,16 @@ faz_navigate <- possibly(faz_navigate, "NA_character_")
 faz_scrape <- possibly(faz_scrape, "NA_character_")
 
 # Map over the individual pages
-faz.df <- map_dfr(
-  link.df$links, ~{
-    Sys.sleep(sample(seq(0, 5, 0.5), 1))
-    url <- faz_navigate(.x)
-    faz_scrape(url)
-  })
+faz.df <- slice(link.df, 1:3) %>%
+  mutate(content = 
+           map2(
+             .x = links,
+             .y = selection, 
+             ~{
+               Sys.sleep(sample(seq(0, 5, 0.5), 1))
+               url <- faz_navigate(x = .x, y = .y)
+               faz_scrape(x = url)
+               }))
 
 # Exit
 # ---------------------------------------------------------------------------- #
