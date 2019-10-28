@@ -87,10 +87,10 @@ spon.df <- spon.df %>%
          article_link = if_else(str_detect(article_link, "^/"), 
                                 paste0("https://www.spiegel.de", article_link),
                                 article_link)) %>%
-         separate(meta, into = c("source", "section", "date"), 
-                  sep = "[:blank:]-[:blank:]", remove = FALSE) %>%
-           mutate_all(~str_trim(., "both")) %>%                     # Some articles only provide title & date
-           mutate(date = ymd(parse_date_time(date, "d!.m!*.Y!")))
+  separate(meta, into = c("source", "section", "date"), 
+           sep = "[:blank:]-[:blank:]", remove = FALSE) %>%
+  mutate_all(~str_trim(., "both")) %>%                     # Some articles only provide title & date
+  mutate(date = ymd(parse_date_time(date, "d!.m!*.Y!")))
 
 # Save the warning message
 last.message <- names(warnings())
@@ -103,25 +103,42 @@ warning.rows <- strtoi(str_extract_all(last.message, "[:digit:]+(?=[,|\\]])")[[1
 spon.df[warning.rows, "date"] <- ymd(parse_date_time(spon.df[warning.rows, "section"][[1]], "%d.%m.%Y"))
 spon.df[warning.rows, "section"] <- NA_character_
 
+# Filter: Articles published between 01.01.1990 - 31.12.2018
+spon.df <- spon.df %>%
+  filter(between(date, ymd("1990-01-01"), ymd("2018-12-31")))
+
+# Save dataset
+#saveRDS(spon.df, "./output/spon_links.rds")
+
 
 # Get the content of the articles
 # ---------------------------------------------------------------------------- #
+# Read dataset with links
+spon.df <- readRDS("./output/spon_links.rds")
+
 # Create a function
-sp_scrape_art <- function(x){
+sp_scrape_content <- function(x, y){
   read_html(x) %>%
-    html_nodes(".dig-artikel") %>%
+    html_nodes(y) %>%
     html_text()
 }
 
 # Scrape safely
-sp_scrape_art <- possibly(sp_scrape_art, NA_character_) 
+sp_scrape_content <- possibly(sp_scrape_content, NA_character_) 
 
 # Map over links
-test.df <- slice(spon.df, 20:25) %>%                 # Test run on 10 articles
-    mutate(text = 
+
+#               #
+# ADD CONDITION #  
+#               #
+
+test.df <- sample_n(spon.df, 10) %>%                 
+    mutate(
+#      condition = if_else(str_detect())
+      text = 
              map(article_link, ~{
-               Sys.sleep(sample(seq(0, 3, 0.5), 1))
-               sp_scrape_art(.x)
+               Sys.sleep(sample(seq(0, 5, 0.5), 1))
+               sp_scrape_content(.x)
                })
            )
 
