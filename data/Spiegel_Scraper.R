@@ -13,7 +13,7 @@
 # ---------------------------------------------------------------------------- #
 # Load/install packages
 if(!require(pacman)) install.packages("pacman")
-p_load(tidyverse, rvest, stringr, httr, lubridate)
+p_load(tidyverse, rvest, stringr, httr, lubridate, tif)
 
 # Search for articles in the archive of "Der Spiegel"
 # Search term: "Reproduktionsmedizin*"
@@ -126,31 +126,26 @@ sp_scrape_content <- function(x, y){
 # Scrape safely
 sp_scrape_content <- possibly(sp_scrape_content, NA_character_) 
 
+# Condition for differing nodes
+spon.df <- spon.df %>%
+  mutate(condition = if_else(source == "SPIEGEL ONLINE", 
+                             ".article-section",
+                             ".dig-artikel"))
+
 # Map over links
-
-#               #
-# ADD CONDITION #  
-#               #
-
-test.df <- sample_n(spon.df, 10) %>%                 
+spon.df <- spon.df %>%                 
     mutate(
-#      condition = if_else(str_detect())
       text = 
-             map(article_link, ~{
-               Sys.sleep(sample(seq(0, 5, 0.5), 1))
-               sp_scrape_content(.x)
-               })
-           )
+             map2(.x = article_link, .y = condition,
+                  ~{Sys.sleep(sample(seq(0, 5, 0.5), 1))
+                    sp_scrape_content(x = .x, y = .y)
+                    }))
 
 # UNDER CONSTRUCTION
 # ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-# ---------------------------------------------------------------------------- #
-# Put the articles into the data frame with meta information
-SPcorpus.df <- scrape.df %>%
-  mutate(data = articles)
+# 1 Check tif requirements
+# 2 Put the articles into the data frame with meta information
+SPcorpus.df <- scrape.df
 
 # Save
 saveRDS(object = scrape.df, file = "./output/SPcorpus.RDS")
