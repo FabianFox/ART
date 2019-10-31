@@ -160,4 +160,4 @@ tif_is_corpus_df(sp_corpus.df)
 
 # Save
 # ---------------------------------------------------------------------------- #
-export(sp_corpus.df, file = "./output/sp_corpus.rds")
+#export(sp_corpus.df, file = "./output/sp_corpus.rds")
