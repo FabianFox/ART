@@ -13,7 +13,7 @@
 # ---------------------------------------------------------------------------- #
 # Load/install packages
 if(!require(pacman)) install.packages("pacman")
-p_load(tidyverse, rvest, stringr, httr, lubridate, tif)
+p_load(tidyverse, rvest, stringr, httr, lubridate, tif, rio, utf8, qdap)
 
 # Search for articles in the archive of "Der Spiegel"
 # Search term: "Reproduktionsmedizin*"
@@ -108,13 +108,13 @@ spon.df <- spon.df %>%
   filter(between(date, ymd("1990-01-01"), ymd("2018-12-31")))
 
 # Save dataset
-#saveRDS(spon.df, "./output/spon_links.rds")
+#export(spon.df, "./output/spon_links.rds")
 
 
 # Get the content of the articles
 # ---------------------------------------------------------------------------- #
 # Read dataset with links
-spon.df <- readRDS("./output/spon_links.rds")
+spon.df <- export("./output/spon_links.rds")
 
 # Create a function
 sp_scrape_content <- function(x, y){
@@ -137,15 +137,27 @@ spon.df <- spon.df %>%
     mutate(
       text = 
              map2(.x = article_link, .y = condition,
-                  ~{Sys.sleep(sample(seq(0, 5, 0.5), 1))
+                  ~{Sys.sleep(sample(seq(1.5, 6, 0.5), 1))
                     sp_scrape_content(x = .x, y = .y)
                     }))
 
-# UNDER CONSTRUCTION
+# Save raw data
+# saveRDS(spon.df, "./output/spon_raw_data.rds")
+
+# Turn into a corpus with tif conformity
 # ---------------------------------------------------------------------------- #
-# 1 Check tif requirements
-# 2 Put the articles into the data frame with meta information
-SPcorpus.df <- scrape.df
+# Load raw data
+spon.df <- import("./output/spon_raw_data.rds")
+
+# Edit the data to conform to tif
+sp_corpus.df <- spon.df %>%
+  mutate(doc_id = paste0("SP_", 1:n()),
+         text = as_utf8(bracketX(text))) %>%
+  select(doc_id, everything())
+
+# Check tif conformity
+tif_is_corpus_df(sp_corpus.df)  
 
 # Save
-saveRDS(object = scrape.df, file = "./output/SPcorpus.RDS")
+# ---------------------------------------------------------------------------- #
+export(sp_corpus.df, file = "./output/sp_corpus.rds")
