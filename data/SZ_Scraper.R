@@ -16,13 +16,13 @@
 # Load packages/install packages
 # ---------------------------------------------------------------------------- #
 if (!require("pacman")) install.packages("pacman")
-p_load(RSelenium, tidyverse, rvest, stringr)
+p_load(RSelenium, tidyverse, rvest, stringr, rio)
 
 # Initialize Selenium
 # ---------------------------------------------------------------------------- #
 
 # Initialize the RSelenium server running firefox
-remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 8888L, browser = "firefox")
+remDr <- RSelenium::rsDriver(remoteServerAddr = "localhost", port = 8887L, browser = "firefox")
 
 # Open the client to steer the browser
 rD <- remDr[["client"]]
@@ -61,16 +61,16 @@ source <- rD$findElement("css", "#sourcecChip > h4:nth-child(3)")
 source$clickElement()
 
 # not "Beilagen"
-no_supp <- rD$findElement("css", "#DIZSZ")
-no_supp$clickElement()
+#no_supp <- rD$findElement("css", "#DIZSZ")
+#no_supp$clickElement()
 
 # not "Bayern"
-no_bavaria <- rD$findElement("css", "#DIZBY")
-no_bavaria <- no_bavaria$clickElement()
+#no_bavaria <- rD$findElement("css", "#DIZBY")
+#no_bavaria <- no_bavaria$clickElement()
 
 # not "Überregionale"
-no_int <- rD$findElement("css", "#DIZUEREG")
-no_int <- no_int$clickElement()
+#no_int <- rD$findElement("css", "#DIZUEREG")
+#no_int <- no_int$clickElement()
 
 # Search
 search_btn <- rD$findElement("css", '#searchBtn')
@@ -108,11 +108,11 @@ jump_next <- function(x){
 
 # Object that stores the information
 # See: https://r4ds.had.co.nz/iteration.html#for-loops
-meta.df <- vector(mode = "list", length = num_pages)
+meta.df <- vector("list", num_pages)
 
 # Loop that fills the object and applies the functions (1) and (2)
-for (page in seq_along(1:(num_pages))) {
-  print(paste0("Scraping content of page ", page))
+for (page in seq_along(1:num_pages)) {
+  print(paste0("Scraping content of page ", page, " of ", num_pages, " pages"))
   
   meta.df[[page]] <- get_meta()
   
@@ -120,6 +120,10 @@ for (page in seq_along(1:(num_pages))) {
   
   Sys.sleep(sample(seq(2, 7, by = .5), 1))
 }
+
+# Save the raw data
+# export(meta.df, "./output/sz_meta_raw_data.rds")
+meta.df <- import("./output/sz_meta_raw_data.rds")
 
 # Clean
 meta.df <- str_split(flatten_chr(meta.df), "/") %>%
@@ -142,8 +146,8 @@ meta.df <- str_split(flatten_chr(meta.df), "/") %>%
 url <- "https://archiv.szarchiv.de/Portal/restricted/Fulltext.act?index="
 
 link.df <- tibble(
-  links = paste0("https://archiv.szarchiv.de/Portal/restricted/Fulltext.act?index=", 
-                 seq(num_articles - 1, 0))
+  links = rev(paste0("https://archiv.szarchiv.de/Portal/restricted/Fulltext.act?index=", 
+                 seq(num_articles - 1, 0)))
 )
 
 # Functions
@@ -161,11 +165,17 @@ sz_scrape <- function(x){
 sz_navigate <- possibly(sz_navigate, NA_real_)
 sz_scrape <- possibly(sz_scrape, NA_real_)
 
-test <- map(link.df$links[11:14], ~ {
-  Sys.sleep(sample(seq(2, 5, by = .5), 1))   # friendly scraping
-  url <- sz_navigate(.x)
-  sz_scrape(url)
-})
+link.df <- link.df %>%
+  mutate(text = 
+           map(.x = links,
+               ~ {Sys.sleep(sample(seq(2, 7, by = .5), 1))   # friendly scraping
+                 url <- sz_navigate(.x)
+                 sz_scrape(url)
+                 }))
+
+# Save
+# export(link.df, "./output/sz_article_raw.rds")
+link.df <- import("./output/sz_article_raw.rds")
 
 # PARTS (yet to be integrated) 
 # ---------------------------------------------------------------------------- #
