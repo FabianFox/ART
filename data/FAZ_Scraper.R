@@ -45,6 +45,10 @@ search$sendKeysToElement(list("'Reproduktionsmedizin*'"))
 advbutton <- rD$findElement("css", "#f_c1")
 advbutton$clickElement()
 
+# Dropdown: Source (only FAZ print)
+source <- rD$findElement("css", "#f_source > option:nth-child(2)")
+source$clickElement()
+
 # Limit search
 # Date
 toDate <- rD$findElement("css", "#f_DT_to")
@@ -56,10 +60,6 @@ fromDate <- rD$findElement("css", "#f_DT_from")
 fromDate$clickElement()
 fromDate$clearElement()
 fromDate$sendKeysToElement(list("01.01.1990"))
-
-# Dropdown: Source (only FAZ print)
-# source <- rD$findElement("css", "#f_source > option:nth-child(2)")
-# source$clickElement()
 
 # Search
 # ---------------------------------------------------------------------------- #
@@ -77,7 +77,8 @@ showmore$clickElement()
 num_pages <- read_html(rD$getPageSource()[[1]]) %>%
   html_nodes("div.summary:nth-child(1) > div:nth-child(1) > span:nth-child(1)") %>%
   html_text() %>%
-  str_extract(., "[:digit:]+") %>%
+  str_extract(., "^.+(?= )") %>% # [:digit:]+
+  str_replace("[.]", "") %>%
   strtoi()
 
 # Round
@@ -112,12 +113,14 @@ faz_navigate <- function(x, y){
   show <- rD$findElement("css", paste0("#f_c", y))                   # This element changes
   show$clickElement()                                                # conditional on page
   
-  Sys.sleep(3)
+  Sys.sleep(5)
   
   rD$getCurrentUrl()[[1]]
 }
 
 # Save the information of each page
+# Note:
+# - there are articles without a title
 faz_scrape <- function(x){
   
   page <- read_html(x)
@@ -135,7 +138,7 @@ faz_scrape <- function(x){
     html_text() %>%
     .[seq(1, length(.), 2)]
   
-  df <- tibble(meta, title, article)
+  df <- tibble(meta, title = list(title), article)
 }
 
 # Wrap as safe function
@@ -143,7 +146,12 @@ faz_navigate <- possibly(faz_navigate, "NA_character_")
 faz_scrape <- possibly(faz_scrape, "NA_character_")
 
 # Map over the individual pages
-faz.df <- slice(link.df, 1:3) %>%
+# Note:
+# - the FAZ website only allows a limited number of queries in a given period and
+#   presents a CAPTCHA
+
+# The actual scraping
+faz1.df <- slice(link.df, 1:2) %>%
   mutate(content = 
            map2(
              .x = links,
